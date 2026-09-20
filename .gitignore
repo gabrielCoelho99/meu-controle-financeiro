@@ -1,0 +1,10 @@
+# Arquivos do sistema
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# PDFs pessoais (extratos bancários - NÃO subir pro GitHub)
+*.pdf
+
+# Logs
+*.log
