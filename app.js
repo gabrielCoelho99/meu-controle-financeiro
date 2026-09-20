@@ -8,7 +8,7 @@ const PACKAGE_RATE = 2.50;
 const RISK_BONUS = 45;
 const SAT_BONUS = 30;
 const SUN_BONUS = 50;
-const WEEKLY_TARGET = 1672.50;
+
 const SURVIVAL_COSTS = { childFood: 200, fuel: 175, groceries: 150 };
 const SURVIVAL_TOTAL = Object.values(SURVIVAL_COSTS).reduce((a, b) => a + b, 0);
 
@@ -139,6 +139,23 @@ let currentMonday = getMonday(new Date());
 let currentPage = 'dashboard';
 let editingRouteIndex = null; // null = adicionando, número = editando
 
+// ---- Prompt Meta Base ----
+function editSurvivalTarget() {
+  const weekKey = getCurrentWeekKey();
+  const week = getWeekData(weekKey);
+  const currentVal = week.survivalTarget !== undefined ? week.survivalTarget : 500;
+  const newVal = prompt('Qual a sua meta de dinheiro para mercado, gasolina e sobrevivência nesta semana?\n\n(Não precisa somar os boletos, eles serão somados automaticamente!)', currentVal);
+  if (newVal !== null) {
+    const num = parseFloat(newVal.replace(',', '.'));
+    if (!isNaN(num) && num >= 0) {
+      week.survivalTarget = num;
+      saveAppData(appData);
+      renderDashboard();
+      showToast('Meta base atualizada!', 'success');
+    }
+  }
+}
+
 // ---- Navigation ----
 function navigateTo(page) {
   currentPage = page;
@@ -182,6 +199,7 @@ function nextWeek() {
 function getWeekData(weekKey) {
   if (!appData.weeks[weekKey]) {
     appData.weeks[weekKey] = {
+      survivalTarget: 500, // Meta base padrão
       routes: [],
       extraIncome: [],
       expenses: []
@@ -194,6 +212,51 @@ function getCurrentWeekKey() {
   return getWeekKey(currentMonday);
 }
 
+function calculateDynamicTarget(weekKey) {
+  const week = getWeekData(weekKey);
+  const survivalTarget = week.survivalTarget !== undefined ? week.survivalTarget : 500;
+  let upcomingTotal = 0;
+
+  const windowStart = new Date(currentMonday);
+  const windowEnd = new Date(currentMonday);
+  windowEnd.setDate(windowEnd.getDate() + 14);
+
+  const today = new Date();
+  const currentMonthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+
+  const checkList = (list, isBill) => {
+    list.forEach(d => {
+      if (!isBill) {
+        const remaining = d.totalPayments - d.paidPayments;
+        if (remaining <= 0) return;
+      }
+      if (!d.dueDay) return;
+      if (d.lastPaidMonth === currentMonthKey) return;
+
+      let occurs = false;
+      for (let i = 0; i < 14; i++) {
+        const dTest = new Date(windowStart);
+        dTest.setDate(dTest.getDate() + i);
+        if (dTest.getDate() === d.dueDay) {
+          occurs = true;
+          break;
+        }
+      }
+
+      if (occurs) {
+        upcomingTotal += d.monthlyAmount;
+      }
+    });
+  };
+
+  checkList(appData.debts, false);
+  checkList(appData.bills, true);
+
+  // Subtrair o que já está guardado nas caixinhas para não cobrar duas vezes?
+  // O usuário quer ver o valor bruto necessário.
+  return survivalTarget + upcomingTotal;
+}
+
 // ---- Calculate Week Totals ----
 function calcWeekTotals(weekKey) {
   const week = getWeekData(weekKey);
@@ -203,6 +266,8 @@ function calcWeekTotals(weekKey) {
   const survivalCost = week.expenses ? week.expenses.reduce((sum, e) => sum + e.amount, 0) : 0;
   const freeAmount = totalIncome - survivalCost;
   const afterProvision = freeAmount - RENT_WEEKLY - BILLS_WEEKLY;
+
+  const dynamicTarget = calculateDynamicTarget(weekKey);
 
   return {
     shopee: shopeeTotal,
@@ -214,7 +279,8 @@ function calcWeekTotals(weekKey) {
     billsProvision: BILLS_WEEKLY,
     afterProvision,
     routeCount: week.routes.length,
-    progress: Math.min((totalIncome / WEEKLY_TARGET) * 100, 100)
+    dynamicTarget: dynamicTarget,
+    progress: Math.min((totalIncome / dynamicTarget) * 100, 100)
   };
 }
 
@@ -311,6 +377,12 @@ function renderDashboard() {
     ringFill.style.strokeDashoffset = offset;
   }
   if (ringAmount) ringAmount.textContent = formatMoney(totals.totalIncome);
+  
+  const ringTarget = document.getElementById('ring-target');
+  if (ringTarget) {
+    ringTarget.textContent = `de ${formatMoney(totals.dynamicTarget)}`;
+  }
+
   if (ringPercent) {
     ringPercent.textContent = `${Math.round(totals.progress)}% da meta`;
     ringPercent.className = 'ring-percent ' + (totals.progress >= 100 ? 'text-success' : totals.progress >= 60 ? 'text-warning' : 'text-danger');
@@ -324,10 +396,10 @@ function renderDashboard() {
       healthEl.innerHTML = '🟢 Meta batida! O extra é lucro!';
     } else if (totals.progress >= 50) {
       healthEl.className = 'health-indicator yellow';
-      healthEl.innerHTML = `🟡 Faltam ${formatMoney(WEEKLY_TARGET - totals.totalIncome)}`;
+      healthEl.innerHTML = `🟡 Faltam ${formatMoney(totals.dynamicTarget - totals.totalIncome)}`;
     } else {
       healthEl.className = 'health-indicator red';
-      healthEl.innerHTML = `🔴 Faltam ${formatMoney(WEEKLY_TARGET - totals.totalIncome)}`;
+      healthEl.innerHTML = `🔴 Faltam ${formatMoney(totals.dynamicTarget - totals.totalIncome)}`;
     }
   }
 
