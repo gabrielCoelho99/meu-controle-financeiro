@@ -1,5 +1,6 @@
 // ============================================
 //  CONTROLE FINANCEIRO SEMANAL - APP PRINCIPAL
+//  v2.0 - Semana Seg-Dom, Edição de Rotas, Vencimentos
 // ============================================
 
 // ---- Constants ----
@@ -33,24 +34,31 @@ const CATEGORY_NAMES = {
   outros: 'Outros'
 };
 
-// ---- Default Debts ----
+// ---- Default Debts (com datas de vencimento) ----
 const DEFAULT_DEBTS = [
-  { id: 'd1', name: 'Loja Geladinho', icon: '🍦', monthlyAmount: 100, totalPayments: 1, paidPayments: 0, type: 'fixed' },
-  { id: 'd2', name: 'Celular Giovanildo', icon: '📱', monthlyAmount: 100, totalPayments: 1, paidPayments: 0, type: 'fixed' },
-  { id: 'd3', name: 'Salão Gisa', icon: '💇', monthlyAmount: 100, totalPayments: 1, paidPayments: 0, type: 'fixed' },
-  { id: 'd4', name: 'Mateus (Empréstimo)', icon: '👤', monthlyAmount: 284, totalPayments: 2, paidPayments: 0, type: 'fixed' },
-  { id: 'd5', name: 'Tia Geysa', icon: '👩', monthlyAmount: 213, totalPayments: 2, paidPayments: 0, type: 'fixed' },
-  { id: 'd6', name: 'Credamigo', icon: '🏦', monthlyAmount: 300, totalPayments: 3, paidPayments: 0, type: 'fixed' },
-  { id: 'd7', name: 'Cartão TV', icon: '📺', monthlyAmount: 188, totalPayments: 4, paidPayments: 0, type: 'fixed' },
-  { id: 'd8', name: 'Cunhada (Material)', icon: '👩‍🦰', monthlyAmount: 130, totalPayments: 1, paidPayments: 0, type: 'fixed' },
-  { id: 'd9', name: 'Empréstimo ShopeePay', icon: '🛒', monthlyAmount: 100, totalPayments: 6, paidPayments: 0, type: 'recurring' },
-  { id: 'd10', name: 'Facio 4 (R$110+R$340)', icon: '💳', monthlyAmount: 450, totalPayments: 12, paidPayments: 0, type: 'recurring' },
+  { id: 'd1', name: 'Loja Geladinho', icon: '🍦', monthlyAmount: 100, totalPayments: 1, paidPayments: 0, type: 'fixed', dueDay: null },
+  { id: 'd2', name: 'Celular Giovanildo', icon: '📱', monthlyAmount: 100, totalPayments: 1, paidPayments: 0, type: 'fixed', dueDay: null },
+  { id: 'd3', name: 'Salão Gisa', icon: '💇', monthlyAmount: 100, totalPayments: 1, paidPayments: 0, type: 'fixed', dueDay: null },
+  { id: 'd4', name: 'Mateus (Empréstimo)', icon: '👤', monthlyAmount: 284, totalPayments: 2, paidPayments: 0, type: 'fixed', dueDay: null },
+  { id: 'd5', name: 'Tia Geysa', icon: '👩', monthlyAmount: 213, totalPayments: 2, paidPayments: 0, type: 'fixed', dueDay: null },
+  { id: 'd6', name: 'Credamigo', icon: '🏦', monthlyAmount: 300, totalPayments: 3, paidPayments: 0, type: 'fixed', dueDay: 13 },
+  { id: 'd7', name: 'Cartão TV', icon: '📺', monthlyAmount: 188, totalPayments: 4, paidPayments: 0, type: 'fixed', dueDay: null },
+  { id: 'd8', name: 'Cunhada (Material)', icon: '👩‍🦰', monthlyAmount: 130, totalPayments: 1, paidPayments: 0, type: 'fixed', dueDay: null },
+  { id: 'd9', name: 'Empréstimo ShopeePay', icon: '🛒', monthlyAmount: 100, totalPayments: 6, paidPayments: 0, type: 'recurring', dueDay: null },
+  { id: 'd10', name: 'Facio 4 (R$110+R$340)', icon: '💳', monthlyAmount: 450, totalPayments: 12, paidPayments: 0, type: 'recurring', dueDay: null },
 ];
 
 // ---- Data Management ----
 function getAppData() {
   const raw = localStorage.getItem('gab_finance_data');
-  if (raw) return JSON.parse(raw);
+  if (raw) {
+    const data = JSON.parse(raw);
+    // Migrate: add dueDay to existing debts if missing
+    data.debts.forEach(d => {
+      if (d.dueDay === undefined) d.dueDay = null;
+    });
+    return data;
+  }
   return createDefaultData();
 }
 
@@ -70,28 +78,28 @@ function createDefaultData() {
   return data;
 }
 
-// ---- Week Utilities ----
-function getThursday(date) {
+// ---- Week Utilities (SEGUNDA a DOMINGO) ----
+function getMonday(date) {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
-  const day = d.getDay();
-  // Thursday = 4
-  const diff = day >= 4 ? day - 4 : day + 3;
+  const day = d.getDay(); // 0=Dom, 1=Seg, ..., 6=Sab
+  // Se for domingo (0), voltar 6 dias. Senão, voltar (day - 1) dias.
+  const diff = day === 0 ? 6 : day - 1;
   d.setDate(d.getDate() - diff);
   return d;
 }
 
-function getWeekKey(thursdayDate) {
-  const y = thursdayDate.getFullYear();
-  const m = String(thursdayDate.getMonth() + 1).padStart(2, '0');
-  const d = String(thursdayDate.getDate()).padStart(2, '0');
+function getWeekKey(mondayDate) {
+  const y = mondayDate.getFullYear();
+  const m = String(mondayDate.getMonth() + 1).padStart(2, '0');
+  const d = String(mondayDate.getDate()).padStart(2, '0');
   return `week-${y}-${m}-${d}`;
 }
 
-function getWeekDays(thursdayDate) {
+function getWeekDays(mondayDate) {
   const days = [];
   for (let i = 0; i < 7; i++) {
-    const d = new Date(thursdayDate);
+    const d = new Date(mondayDate);
     d.setDate(d.getDate() + i);
     days.push(d);
   }
@@ -125,8 +133,9 @@ function formatMoney(value) {
 
 // ---- State ----
 let appData = getAppData();
-let currentThursday = getThursday(new Date());
+let currentMonday = getMonday(new Date());
 let currentPage = 'dashboard';
+let editingRouteIndex = null; // null = adicionando, número = editando
 
 // ---- Navigation ----
 function navigateTo(page) {
@@ -140,7 +149,6 @@ function navigateTo(page) {
   if (pageEl) pageEl.classList.add('active');
   if (navEl) navEl.classList.add('active');
 
-  // Refresh page content
   switch (page) {
     case 'dashboard': renderDashboard(); break;
     case 'routes': renderRoutes(); break;
@@ -153,16 +161,16 @@ function navigateTo(page) {
 
 // ---- Week Navigation ----
 function prevWeek() {
-  currentThursday.setDate(currentThursday.getDate() - 7);
+  currentMonday.setDate(currentMonday.getDate() - 7);
   renderDashboard();
 }
 
 function nextWeek() {
-  const now = getThursday(new Date());
-  const next = new Date(currentThursday);
+  const now = getMonday(new Date());
+  const next = new Date(currentMonday);
   next.setDate(next.getDate() + 7);
   if (next <= now || isSameDay(next, now)) {
-    currentThursday = next;
+    currentMonday = next;
   }
   renderDashboard();
 }
@@ -180,7 +188,7 @@ function getWeekData(weekKey) {
 }
 
 function getCurrentWeekKey() {
-  return getWeekKey(currentThursday);
+  return getWeekKey(currentMonday);
 }
 
 // ---- Calculate Week Totals ----
@@ -225,14 +233,46 @@ function getDayEarnings(weekKey, date) {
   return routeTotal + extraTotal;
 }
 
+// ---- Upcoming Debts (vencimentos da semana) ----
+function getUpcomingDebts() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const days = getWeekDays(currentMonday);
+  const sundayOfWeek = days[6];
+
+  const upcoming = [];
+  appData.debts.forEach(d => {
+    const remaining = d.totalPayments - d.paidPayments;
+    if (remaining <= 0 || !d.dueDay) return;
+
+    // Check if the due day falls within this week
+    for (let dayObj of days) {
+      if (dayObj.getDate() === d.dueDay) {
+        const isPast = dayObj < today;
+        upcoming.push({
+          debt: d,
+          dueDate: new Date(dayObj),
+          isPast: isPast,
+          isToday: isSameDay(dayObj, today)
+        });
+        break;
+      }
+    }
+  });
+
+  // Sort by date
+  upcoming.sort((a, b) => a.dueDate - b.dueDate);
+  return upcoming;
+}
+
 // ---- Render Dashboard ----
 function renderDashboard() {
   const weekKey = getCurrentWeekKey();
   const totals = calcWeekTotals(weekKey);
-  const days = getWeekDays(currentThursday);
+  const days = getWeekDays(currentMonday);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const isCurrentWeek = isSameDay(currentThursday, getThursday(new Date()));
+  const isCurrentWeek = isSameDay(currentMonday, getMonday(new Date()));
 
   // Week label
   const weekLabel = document.getElementById('week-label');
@@ -282,17 +322,16 @@ function renderDashboard() {
   document.getElementById('stat-survival').textContent = formatMoney(totals.survivalCost);
   document.getElementById('stat-free').textContent = formatMoney(Math.max(totals.afterProvision, 0));
 
-  // Free stat color
   const freeCard = document.getElementById('stat-free');
   if (freeCard) {
     freeCard.style.color = totals.afterProvision >= 0 ? 'var(--success)' : 'var(--danger)';
   }
 
-  // Week strip
+  // Week strip (Seg → Dom)
   const stripEl = document.getElementById('week-strip');
   if (stripEl) {
     stripEl.innerHTML = '';
-    days.forEach((day, i) => {
+    days.forEach((day) => {
       const dayIndex = day.getDay();
       const earnings = getDayEarnings(weekKey, day);
       const isToday = isSameDay(day, today);
@@ -309,7 +348,36 @@ function renderDashboard() {
     });
   }
 
-  // Update header week label
+  // Upcoming debts alert
+  const upcomingEl = document.getElementById('upcoming-debts');
+  if (upcomingEl) {
+    const upcoming = getUpcomingDebts();
+    if (upcoming.length > 0) {
+      let html = '';
+      upcoming.forEach(u => {
+        const statusClass = u.isToday ? 'text-warning' : u.isPast ? 'text-danger' : 'text-secondary';
+        const statusLabel = u.isToday ? '⚠️ HOJE' : u.isPast ? '🔴 ATRASADO' : `📅 Dia ${u.debt.dueDay}`;
+        html += `
+          <div class="income-item" style="padding:8px 0;">
+            <div class="income-item-info">
+              <div class="income-item-icon">${u.debt.icon}</div>
+              <div>
+                <div class="income-item-name">${u.debt.name}</div>
+                <div class="income-item-date ${statusClass}">${statusLabel}</div>
+              </div>
+            </div>
+            <span class="income-item-amount" style="color:var(--danger)">${formatMoney(u.debt.monthlyAmount)}</span>
+          </div>
+        `;
+      });
+      upcomingEl.innerHTML = html;
+      upcomingEl.closest('.card').style.display = 'block';
+    } else {
+      upcomingEl.closest('.card').style.display = 'none';
+    }
+  }
+
+  // Header week label
   const headerWeek = document.getElementById('header-week');
   if (headerWeek) {
     headerWeek.textContent = `${formatDate(days[0])} — ${formatDate(days[6])}`;
@@ -352,8 +420,9 @@ function renderRoutes() {
             </div>
           </div>
         </div>
-        <div style="display:flex;align-items:center;">
+        <div style="display:flex;align-items:center;gap:4px;">
           <span class="income-item-amount">${formatMoney(route.total)}</span>
+          <button class="income-item-delete" onclick="editRoute(${idx})" title="Editar" style="color:var(--accent-purple);">✏️</button>
           <button class="income-item-delete" onclick="deleteRoute(${idx})" title="Excluir">✕</button>
         </div>
       </div>
@@ -374,7 +443,7 @@ function renderRoutes() {
             <div class="income-item-date">${formatDate(dateObj)}</div>
           </div>
         </div>
-        <div style="display:flex;align-items:center;">
+        <div style="display:flex;align-items:center;gap:4px;">
           <span class="income-item-amount">${formatMoney(extra.amount)}</span>
           <button class="income-item-delete" onclick="deleteExtra(${idx})" title="Excluir">✕</button>
         </div>
@@ -385,18 +454,44 @@ function renderRoutes() {
   listEl.innerHTML = html;
 }
 
-// ---- Route Modal ----
-function openRouteModal() {
+// ---- Route Modal (Adicionar / Editar) ----
+function openRouteModal(editIdx) {
+  editingRouteIndex = (editIdx !== undefined && editIdx !== null) ? editIdx : null;
+
   const modal = document.getElementById('route-modal');
   const overlay = document.getElementById('modal-overlay');
+  const modalTitle = document.getElementById('route-modal-title');
+
   if (modal) modal.classList.remove('hidden');
   if (overlay) overlay.classList.remove('hidden');
 
-  // Set today's date
-  const dateInput = document.getElementById('route-date');
-  if (dateInput) dateInput.value = formatDateISO(new Date());
+  if (editingRouteIndex !== null) {
+    // Modo edição: preencher com dados existentes
+    if (modalTitle) modalTitle.textContent = '✏️ Editar Rota Shopee';
+    const weekKey = getCurrentWeekKey();
+    const week = getWeekData(weekKey);
+    const route = week.routes[editingRouteIndex];
+
+    if (route) {
+      document.getElementById('route-date').value = route.date;
+      document.getElementById('route-packages').value = route.packagesDelivered;
+      document.getElementById('route-km').value = route.km;
+      document.getElementById('route-risk').checked = route.riskBonus;
+    }
+  } else {
+    // Modo adicionar
+    if (modalTitle) modalTitle.textContent = '📦 Registrar Rota Shopee';
+    document.getElementById('route-date').value = formatDateISO(new Date());
+    document.getElementById('route-packages').value = '';
+    document.getElementById('route-km').value = '';
+    document.getElementById('route-risk').checked = true;
+  }
 
   updateRoutePreview();
+}
+
+function editRoute(idx) {
+  openRouteModal(idx);
 }
 
 function closeRouteModal() {
@@ -404,6 +499,7 @@ function closeRouteModal() {
   const overlay = document.getElementById('modal-overlay');
   if (modal) modal.classList.add('hidden');
   if (overlay) overlay.classList.add('hidden');
+  editingRouteIndex = null;
 }
 
 function updateRoutePreview() {
@@ -423,7 +519,6 @@ function updateRoutePreview() {
   const previewEl = document.getElementById('route-preview-amount');
   if (previewEl) previewEl.textContent = formatMoney(total);
 
-  // Show weekend bonus info
   const bonusInfo = document.getElementById('weekend-bonus-info');
   if (bonusInfo) {
     if (weekendBonus === 'saturday') {
@@ -450,8 +545,8 @@ function saveRoute() {
   }
 
   const routeDate = new Date(date + 'T12:00:00');
-  const thursday = getThursday(routeDate);
-  const weekKey = getWeekKey(thursday);
+  const monday = getMonday(routeDate);
+  const weekKey = getWeekKey(monday);
 
   let weekendBonus = null;
   const dayOfWeek = routeDate.getDay();
@@ -474,22 +569,25 @@ function saveRoute() {
   if (!appData.weeks[weekKey]) {
     appData.weeks[weekKey] = { routes: [], extraIncome: [], expenses: [] };
   }
-  appData.weeks[weekKey].routes.push(route);
+
+  if (editingRouteIndex !== null && weekKey === getCurrentWeekKey()) {
+    // Modo edição: substituir a rota existente
+    appData.weeks[weekKey].routes[editingRouteIndex] = route;
+    showToast(`Rota atualizada! ${formatMoney(total)}`, 'success');
+  } else {
+    // Modo adicionar: nova rota
+    appData.weeks[weekKey].routes.push(route);
+    showToast(`Rota salva! +${formatMoney(total)}`, 'success');
+  }
+
   saveAppData(appData);
 
-  // If the route belongs to the currently viewed week, update
   if (weekKey === getCurrentWeekKey()) {
     renderDashboard();
     renderRoutes();
   }
 
   closeRouteModal();
-  showToast(`Rota salva! +${formatMoney(total)}`, 'success');
-
-  // Reset form
-  document.getElementById('route-packages').value = '';
-  document.getElementById('route-km').value = '';
-  document.getElementById('route-risk').checked = true;
 }
 
 function deleteRoute(idx) {
@@ -533,8 +631,8 @@ function saveExtra() {
   }
 
   const extraDate = new Date(date + 'T12:00:00');
-  const thursday = getThursday(extraDate);
-  const weekKey = getWeekKey(thursday);
+  const monday = getMonday(extraDate);
+  const weekKey = getWeekKey(monday);
 
   const extra = {
     date: date,
@@ -588,11 +686,15 @@ function renderDebts() {
   let freedMoney = 0;
   let html = '';
 
-  // Sort: completed last, then by remaining payments ascending
+  // Sort: completed last, then by due day (nearest first), then by remaining
   const sorted = [...debts].sort((a, b) => {
     const aComplete = a.paidPayments >= a.totalPayments;
     const bComplete = b.paidPayments >= b.totalPayments;
     if (aComplete !== bComplete) return aComplete ? 1 : -1;
+    // Due day: items with due day come first, sorted by day
+    if (a.dueDay && b.dueDay) return a.dueDay - b.dueDay;
+    if (a.dueDay && !b.dueDay) return -1;
+    if (!a.dueDay && b.dueDay) return 1;
     return (a.totalPayments - a.paidPayments) - (b.totalPayments - b.paidPayments);
   });
 
@@ -608,6 +710,24 @@ function renderDebts() {
       totalMonthlyPayments += debt.monthlyAmount;
     }
 
+    // Due day display
+    let dueDayHtml = '';
+    if (!isComplete) {
+      if (debt.dueDay) {
+        const today = new Date();
+        const dueThisMonth = new Date(today.getFullYear(), today.getMonth(), debt.dueDay);
+        const daysUntil = Math.ceil((dueThisMonth - today) / (1000 * 60 * 60 * 24));
+        let dueStatus = '';
+        if (daysUntil < 0) dueStatus = `<span class="text-danger">Venceu dia ${debt.dueDay}</span>`;
+        else if (daysUntil === 0) dueStatus = `<span class="text-warning">⚠️ Vence HOJE</span>`;
+        else if (daysUntil <= 7) dueStatus = `<span class="text-warning">Vence em ${daysUntil} dia${daysUntil > 1 ? 's' : ''} (dia ${debt.dueDay})</span>`;
+        else dueStatus = `<span class="text-secondary">Vence dia ${debt.dueDay}</span>`;
+        dueDayHtml = dueStatus;
+      } else {
+        dueDayHtml = `<span class="text-muted">Sem vencimento definido</span>`;
+      }
+    }
+
     html += `
       <div class="debt-card ${isComplete ? 'completed' : ''}">
         <div class="debt-header">
@@ -615,7 +735,9 @@ function renderDebts() {
             <div class="debt-icon">${debt.icon}</div>
             <div>
               <div class="debt-name">${debt.name}</div>
-              <div class="debt-detail">${isComplete ? '✅ Quitado!' : `${remaining} parcela${remaining > 1 ? 's' : ''} restante${remaining > 1 ? 's' : ''}`}</div>
+              <div class="debt-detail">
+                ${isComplete ? '✅ Quitado!' : `${remaining} parcela${remaining > 1 ? 's' : ''} · ${dueDayHtml}`}
+              </div>
             </div>
           </div>
           <div class="debt-amount">
@@ -628,6 +750,7 @@ function renderDebts() {
         </div>
         ${!isComplete ? `
           <div class="debt-actions">
+            <button class="debt-pay-btn" onclick="setDueDay('${debt.id}')" style="border-color:var(--text-muted);color:var(--text-muted);">📅 Vencimento</button>
             <button class="debt-pay-btn" onclick="payDebt('${debt.id}')">💰 Pagar Parcela</button>
           </div>
         ` : ''}
@@ -666,6 +789,34 @@ function payDebt(debtId) {
   }
 
   renderDebts();
+  renderDashboard(); // Atualizar vencimentos no dashboard
+}
+
+function setDueDay(debtId) {
+  const debt = appData.debts.find(d => d.id === debtId);
+  if (!debt) return;
+
+  const currentDay = debt.dueDay || '';
+  const input = prompt(`📅 Qual o dia do vencimento de "${debt.name}"?\n\nDigite o número do dia (1 a 31).\nExemplo: 13 para todo dia 13.\nDeixe vazio para remover.`, currentDay);
+
+  if (input === null) return; // Cancelou
+
+  if (input.trim() === '') {
+    debt.dueDay = null;
+    showToast(`Vencimento de ${debt.name} removido`, 'warning');
+  } else {
+    const day = parseInt(input.trim());
+    if (isNaN(day) || day < 1 || day > 31) {
+      showToast('Dia inválido! Use um número de 1 a 31.', 'error');
+      return;
+    }
+    debt.dueDay = day;
+    showToast(`${debt.name}: vencimento definido para dia ${day}`, 'success');
+  }
+
+  saveAppData(appData);
+  renderDebts();
+  renderDashboard();
 }
 
 // ---- Savings (Caixinhas) ----
@@ -830,12 +981,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Week nav buttons
+  // Week nav
   document.getElementById('btn-prev-week')?.addEventListener('click', prevWeek);
   document.getElementById('btn-next-week')?.addEventListener('click', nextWeek);
 
   // Route modal
-  document.getElementById('btn-add-route')?.addEventListener('click', openRouteModal);
+  document.getElementById('btn-add-route')?.addEventListener('click', () => openRouteModal());
   document.getElementById('btn-close-route-modal')?.addEventListener('click', closeRouteModal);
   document.getElementById('btn-save-route')?.addEventListener('click', saveRoute);
 
@@ -857,7 +1008,7 @@ document.addEventListener('DOMContentLoaded', () => {
     closeExtraModal();
   });
 
-  // Savings deposit buttons
+  // Savings
   document.getElementById('btn-deposit-rent')?.addEventListener('click', () => depositSavings('rent'));
   document.getElementById('btn-deposit-bills')?.addEventListener('click', () => depositSavings('bills'));
 
@@ -871,6 +1022,7 @@ window.AppFinance = {
   calcWeekTotals,
   getCurrentWeekKey,
   getWeekData,
+  getUpcomingDebts,
   formatMoney,
   WEEKLY_TARGET,
   SURVIVAL_TOTAL,
