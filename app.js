@@ -467,6 +467,52 @@ function renderRoutes() {
   });
 
   listEl.innerHTML = html;
+
+  // Render Expenses
+  const expensesEl = document.getElementById('expenses-list');
+  if (expensesEl) {
+    if (!week.expenses || week.expenses.length === 0) {
+      expensesEl.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">🛒</div>
+          <div class="empty-text">Nenhuma despesa variável registrada.</div>
+        </div>
+      `;
+    } else {
+      let expHtml = '';
+      week.expenses.forEach((exp, idx) => {
+        const dateObj = new Date(exp.date + 'T12:00:00');
+        expHtml += `
+          <div class="income-item">
+            <div class="income-item-info">
+              <div class="income-item-icon">🛒</div>
+              <div>
+                <div class="income-item-name">${exp.name}</div>
+                <div class="income-item-date">${formatDate(dateObj)}</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:4px;">
+              <span class="income-item-amount" style="color:var(--danger)">-${formatMoney(exp.amount)}</span>
+              <button class="income-item-delete" onclick="deleteExpense(${idx})" title="Excluir">✕</button>
+            </div>
+          </div>
+        `;
+      });
+      expensesEl.innerHTML = expHtml;
+    }
+  }
+}
+
+function deleteExpense(idx) {
+  const weekKey = getCurrentWeekKey();
+  const week = getWeekData(weekKey);
+  if (week.expenses && idx >= 0 && idx < week.expenses.length) {
+    week.expenses.splice(idx, 1);
+    saveAppData(appData);
+    renderRoutes();
+    renderDashboard();
+    showToast('Despesa removida', 'warning');
+  }
 }
 
 // ---- Route Modal (Adicionar / Editar) ----
