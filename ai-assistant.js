@@ -55,10 +55,21 @@
         debtLines += `  - ${d.name}: QUITADO ✅\n`;
         completedDebts++;
       } else {
-        debtLines += `  - ${d.name}: ${remaining} parcela(s) de ${fm(d.monthlyAmount)}\n`;
+        const vencimento = d.dueDay ? ` (Vence dia ${d.dueDay})` : '';
+        debtLines += `  - ${d.name}: ${remaining} parcela(s) de ${fm(d.monthlyAmount)}${vencimento}\n`;
         totalDebtMonthly += d.monthlyAmount;
       }
     });
+
+    const upcoming = fin.getUpcomingDebts();
+    let upcomingText = '';
+    if (upcoming.length > 0) {
+      upcomingText = '\n== VENCIMENTOS DA SEMANA ATUAL ==\n';
+      upcoming.forEach(u => {
+        const isToday = u.isToday ? ' [VENCE HOJE!]' : (u.isPast ? ' [ATRASADO!]' : '');
+        upcomingText += `- ${u.debt.name}: ${fm(u.debt.monthlyAmount)} - Dia ${u.debt.dueDay}${isToday}\n`;
+      });
+    }
 
     // Savings
     const savingsKey = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
@@ -86,12 +97,12 @@ CONTEXTO FINANCEIRO ATUALIZADO DO GABRIEL:
 ${debtLines}
 - Total mensal em parcelas ativas: ${fm(totalDebtMonthly)}
 - Dívidas já quitadas: ${completedDebts}
-
+${upcomingText}
 == PERFIL ==
 - Gabriel é motorista de entregas Shopee (ShopeePay) e motorista de app (Uber/99)
 - Também vende geladinhos como renda extra
 - Recebe semanalmente, toda quinta-feira
-- Sua semana financeira vai de Quinta a Quarta
+- Sua semana financeira agora é de Segunda a Domingo
 - Tem esposa (desempregada, recebendo seguro desemprego) e um filho pequeno
 - Aluguel de R$1.468 (dividido em cotas semanais de R$367)
 - Está num plano de "Bola de Neve" para quitar todas as dívidas até Janeiro/2027
