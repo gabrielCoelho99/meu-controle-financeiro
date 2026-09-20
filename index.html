@@ -55,10 +55,14 @@
           </svg>
           <div class="ring-center">
             <div class="ring-amount" id="ring-amount">R$ 0,00</div>
-            <div class="ring-label">de R$ 1.672,50</div>
+            <div class="ring-label" id="ring-target">de R$ 0,00</div>
             <div class="ring-percent text-warning" id="ring-percent">0% da meta</div>
           </div>
         </div>
+      </div>
+
+      <div style="text-align: center; margin-top: -10px; margin-bottom: 20px; position: relative; z-index: 10;">
+        <button class="btn btn-outline btn-sm" onclick="editSurvivalTarget()" style="border-radius:20px;font-size:0.8rem;padding:4px 12px;opacity:0.8;">✏️ Ajustar Meta Base</button>
       </div>
 
       <!-- Health Indicator -->
@@ -112,12 +116,13 @@
     <section id="page-routes" class="page">
       <div class="page-title">
         <span class="icon">🛣️</span>
-        <h2>Rotas & Ganhos</h2>
+        <h2>Ganhos & Despesas</h2>
       </div>
 
       <div style="display:flex;gap:10px;margin-bottom:20px;">
         <button class="btn btn-primary btn-full btn-sm" id="btn-add-route-2" onclick="document.getElementById('btn-add-route').click()">📦 Nova Rota</button>
         <button class="btn btn-outline btn-full btn-sm" id="btn-add-extra-2" onclick="document.getElementById('btn-add-extra').click()">💵 Renda Extra</button>
+        <button class="btn btn-full btn-sm" style="background:var(--warning);color:var(--bg-card);border:none;" onclick="document.getElementById('btn-add-expense').click()">🛒 Despesa</button>
       </div>
 
       <div class="card">
@@ -128,6 +133,18 @@
           <div class="empty-state">
             <div class="empty-icon">🛣️</div>
             <div class="empty-text">Nenhuma rota registrada nesta semana</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 20px;">
+        <div class="card-header">
+          <span class="card-title text-warning">Despesas Variáveis da Semana</span>
+        </div>
+        <div class="income-list" id="expenses-list">
+          <div class="empty-state">
+            <div class="empty-icon">🛒</div>
+            <div class="empty-text">Nenhuma despesa variável registrada.</div>
           </div>
         </div>
       </div>
