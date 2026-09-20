@@ -57,6 +57,7 @@ function getAppData() {
       if (d.dueDay === undefined) d.dueDay = null;
       if (d.lastPaidMonth === undefined) d.lastPaidMonth = null;
     });
+    if (!data.bills) data.bills = [];
     return data;
   }
   return createDefaultData();
@@ -70,6 +71,7 @@ function createDefaultData() {
   const data = {
     weeks: {},
     debts: JSON.parse(JSON.stringify(DEFAULT_DEBTS)),
+    bills: [],
     savings: {},
     chatHistory: [],
     createdAt: new Date().toISOString()
@@ -153,6 +155,7 @@ function navigateTo(page) {
     case 'dashboard': renderDashboard(); break;
     case 'routes': renderRoutes(); break;
     case 'debts': renderDebts(); break;
+    case 'bills': renderBills(); break;
     case 'savings': renderSavings(); break;
   }
 
@@ -197,14 +200,15 @@ function calcWeekTotals(weekKey) {
   const shopeeTotal = week.routes.reduce((sum, r) => sum + r.total, 0);
   const extrasTotal = week.extraIncome.reduce((sum, e) => sum + e.amount, 0);
   const totalIncome = shopeeTotal + extrasTotal;
-  const freeAmount = totalIncome - SURVIVAL_TOTAL;
+  const survivalCost = week.expenses ? week.expenses.reduce((sum, e) => sum + e.amount, 0) : 0;
+  const freeAmount = totalIncome - survivalCost;
   const afterProvision = freeAmount - RENT_WEEKLY - BILLS_WEEKLY;
 
   return {
     shopee: shopeeTotal,
     extras: extrasTotal,
     totalIncome,
-    survivalCost: SURVIVAL_TOTAL,
+    survivalCost: survivalCost,
     freeAmount,
     rentProvision: RENT_WEEKLY,
     billsProvision: BILLS_WEEKLY,
@@ -241,28 +245,35 @@ function getUpcomingDebts() {
   const sundayOfWeek = days[6];
 
   const upcoming = [];
-  appData.debts.forEach(d => {
-    const remaining = d.totalPayments - d.paidPayments;
-    if (remaining <= 0 || !d.dueDay) return;
-
-    // Se já pagou neste mês, não mostra como próximo vencimento
-    const currentMonthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-    if (d.lastPaidMonth === currentMonthKey) return;
-
-    // Check if the due day falls within this week
-    for (let dayObj of days) {
-      if (dayObj.getDate() === d.dueDay) {
-        const isPast = dayObj < today;
-        upcoming.push({
-          debt: d,
-          dueDate: new Date(dayObj),
-          isPast: isPast,
-          isToday: isSameDay(dayObj, today)
-        });
-        break;
+  
+  const checkList = (list, isBill = false) => {
+    list.forEach(d => {
+      if (!isBill) {
+        const remaining = d.totalPayments - d.paidPayments;
+        if (remaining <= 0) return;
       }
-    }
-  });
+      if (!d.dueDay) return;
+
+      const currentMonthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+      if (d.lastPaidMonth === currentMonthKey) return;
+
+      for (let dayObj of days) {
+        if (dayObj.getDate() === d.dueDay) {
+          const isPast = dayObj < today;
+          upcoming.push({
+            debt: d, // mantido 'debt' para não quebrar a UI que renderiza o alerta
+            dueDate: new Date(dayObj),
+            isPast: isPast,
+            isToday: isSameDay(dayObj, today)
+          });
+          break;
+        }
+      }
+    });
+  };
+
+  checkList(appData.debts, false);
+  checkList(appData.bills, true);
 
   // Sort by date
   upcoming.sort((a, b) => a.dueDate - b.dueDate);
@@ -1073,3 +1084,204 @@ window.AppFinance = {
   navigateTo,
   showToast
 };
+// ---- Expenses Management ----
+function openExpenseModal() {
+  const modal = document.getElementById('expense-modal');
+  const overlay = document.getElementById('modal-overlay');
+  if (modal) modal.classList.remove('hidden');
+  if (overlay) overlay.classList.remove('hidden');
+
+  const dateInput = document.getElementById('expense-date');
+  if (dateInput) dateInput.value = formatDateISO(new Date());
+}
+
+function closeExpenseModal() {
+  const modal = document.getElementById('expense-modal');
+  const overlay = document.getElementById('modal-overlay');
+  if (modal) modal.classList.add('hidden');
+  if (overlay) overlay.classList.add('hidden');
+}
+
+function saveExpense() {
+  const date = document.getElementById('expense-date')?.value;
+  const name = document.getElementById('expense-name')?.value;
+  const amount = parseFloat(document.getElementById('expense-amount')?.value) || 0;
+
+  if (!date || !name || amount <= 0) {
+    showToast('Preencha a data, nome e o valor!', 'warning');
+    return;
+  }
+
+  const expDate = new Date(date + 'T12:00:00');
+  const monday = getMonday(expDate);
+  const weekKey = getWeekKey(monday);
+
+  const expense = {
+    id: 'exp_' + Date.now(),
+    date: date,
+    name: name,
+    amount: amount
+  };
+
+  const week = getWeekData(weekKey);
+  if (!week.expenses) week.expenses = [];
+  week.expenses.push(expense);
+  
+  saveAppData(appData);
+  showToast('Despesa registrada!', 'success');
+  closeExpenseModal();
+
+  if (weekKey === getCurrentWeekKey()) {
+    renderDashboard();
+  }
+}
+
+// ---- Bills Management ----
+function openBillModal() {
+  const modal = document.getElementById('bill-modal');
+  const overlay = document.getElementById('modal-overlay');
+  if (modal) modal.classList.remove('hidden');
+  if (overlay) overlay.classList.remove('hidden');
+}
+
+function closeBillModal() {
+  const modal = document.getElementById('bill-modal');
+  const overlay = document.getElementById('modal-overlay');
+  if (modal) modal.classList.add('hidden');
+  if (overlay) overlay.classList.add('hidden');
+}
+
+function saveBill() {
+  const name = document.getElementById('bill-name')?.value;
+  const amount = parseFloat(document.getElementById('bill-amount')?.value) || 0;
+  const dueDay = parseInt(document.getElementById('bill-due-day')?.value) || null;
+
+  if (!name || amount <= 0) {
+    showToast('Preencha nome e valor mensal!', 'warning');
+    return;
+  }
+  if (dueDay !== null && (dueDay < 1 || dueDay > 31)) {
+    showToast('Dia inválido! Use um número de 1 a 31.', 'error');
+    return;
+  }
+
+  const bill = {
+    id: 'b_' + Date.now(),
+    name: name,
+    icon: '🧾',
+    monthlyAmount: amount,
+    dueDay: dueDay,
+    lastPaidMonth: null
+  };
+
+  appData.bills.push(bill);
+  saveAppData(appData);
+  showToast('Conta Fixa registrada!', 'success');
+  closeBillModal();
+
+  renderBills();
+  renderDashboard();
+}
+
+function renderBills() {
+  const listEl = document.getElementById('bills-list');
+  if (!listEl) return;
+
+  if (!appData.bills || appData.bills.length === 0) {
+    listEl.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🧾</div>
+        <div class="empty-text">Nenhuma conta mensal cadastrada.</div>
+      </div>
+    `;
+    return;
+  }
+
+  let html = '';
+  const today = new Date();
+  const currentMonthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+
+  appData.bills.forEach(bill => {
+    let dueDayHtml = '';
+    const isPaidThisMonth = bill.lastPaidMonth === currentMonthKey;
+
+    if (bill.dueDay) {
+      if (isPaidThisMonth) {
+        dueDayHtml = `<span class="text-success">✅ Paga este mês (Dia ${bill.dueDay})</span>`;
+      } else {
+        const dueThisMonth = new Date(today.getFullYear(), today.getMonth(), bill.dueDay);
+        const daysUntil = Math.ceil((dueThisMonth - today) / (1000 * 60 * 60 * 24));
+        if (daysUntil < 0) dueDayHtml = `<span class="text-danger">Venceu dia ${bill.dueDay}</span>`;
+        else if (daysUntil === 0) dueDayHtml = `<span class="text-warning">⚠️ Vence HOJE</span>`;
+        else if (daysUntil <= 7) dueDayHtml = `<span class="text-warning">Vence em ${daysUntil} dias (Dia ${bill.dueDay})</span>`;
+        else dueDayHtml = `<span class="text-secondary">Vence dia ${bill.dueDay}</span>`;
+      }
+    } else {
+      dueDayHtml = `<span class="text-muted">Sem vencimento definido</span>`;
+    }
+
+    html += `
+      <div class="debt-card ${isPaidThisMonth ? 'completed' : ''}">
+        <div class="debt-header">
+          <div class="debt-info">
+            <div class="debt-icon">${bill.icon}</div>
+            <div>
+              <div class="debt-name">${bill.name}</div>
+              <div class="debt-detail">${dueDayHtml}</div>
+            </div>
+          </div>
+          <div class="debt-amount">
+            <div class="amount">${formatMoney(bill.monthlyAmount)}</div>
+            <div class="remaining">/mês</div>
+          </div>
+        </div>
+        <div class="debt-actions" style="flex-wrap: wrap;">
+          ${!isPaidThisMonth ? `
+            <button class="debt-pay-btn" onclick="payBill('${bill.id}')">💰 Pagar Conta</button>
+          ` : `
+            <button class="debt-pay-btn" onclick="undoBill('${bill.id}')" style="border-color:var(--danger);color:var(--danger);">↩️ Desfazer</button>
+          `}
+          <button class="debt-pay-btn" onclick="deleteBill('${bill.id}')" style="border-color:var(--text-muted);color:var(--text-muted);">🗑️ Excluir</button>
+        </div>
+      </div>
+    `;
+  });
+
+  listEl.innerHTML = html;
+}
+
+function payBill(billId) {
+  const bill = appData.bills.find(b => b.id === billId);
+  if (!bill) return;
+
+  const today = new Date();
+  bill.lastPaidMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  saveAppData(appData);
+
+  showToast(`${bill.name} paga neste mês!`, 'success');
+  renderBills();
+  renderDashboard();
+}
+
+function undoBill(billId) {
+  const bill = appData.bills.find(b => b.id === billId);
+  if (!bill) return;
+
+  if (confirm(`Tem certeza que deseja desfazer o pagamento de "${bill.name}" deste mês?`)) {
+    bill.lastPaidMonth = null;
+    saveAppData(appData);
+    renderBills();
+    renderDashboard();
+    showToast(`Pagamento desfeito.`, 'warning');
+  }
+}
+
+function deleteBill(billId) {
+  if (confirm('Tem certeza que deseja excluir esta conta mensal permanentemente?')) {
+    appData.bills = appData.bills.filter(b => b.id !== billId);
+    saveAppData(appData);
+    renderBills();
+    renderDashboard();
+    showToast('Conta excluída.', 'warning');
+  }
+}
