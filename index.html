@@ -87,10 +87,10 @@
           <div class="stat-value" id="stat-extras">R$ 0,00</div>
           <div class="stat-label">Extras</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card" id="card-expenses" style="cursor:pointer;" onclick="document.getElementById('btn-add-expense').click()">
           <div class="stat-icon">🛒</div>
-          <div class="stat-value text-warning" id="stat-survival">R$ 525,00</div>
-          <div class="stat-label">Sobrevivência</div>
+          <div class="stat-value text-warning" id="stat-survival">R$ 0,00</div>
+          <div class="stat-label">Despesas</div>
         </div>
         <div class="stat-card">
           <div class="stat-icon">🎯</div>
@@ -100,9 +100,10 @@
       </div>
 
       <!-- Quick Actions -->
-      <div style="display:flex;gap:10px;margin-bottom:16px;">
-        <button class="btn btn-primary btn-full btn-sm" id="btn-add-route">📦 Registrar Rota</button>
-        <button class="btn btn-outline btn-full btn-sm" id="btn-add-extra">💵 Renda Extra</button>
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+        <button class="btn btn-primary btn-full btn-sm" style="flex:1;min-width:140px;" id="btn-add-route">📦 Registrar Rota</button>
+        <button class="btn btn-outline btn-full btn-sm" style="flex:1;min-width:140px;" id="btn-add-extra">💵 Renda Extra</button>
+        <button class="btn btn-full btn-sm" style="flex:1;min-width:140px;background:var(--warning);color:var(--bg-card);border:none;" id="btn-add-expense" onclick="openExpenseModal()">🛒 Adicionar Despesa</button>
       </div>
 
     </section>
@@ -157,6 +158,27 @@
 
       <!-- Debt List -->
       <div id="debts-list"></div>
+    </section>
+
+    <!-- ===== BILLS PAGE (Contas Fixas) ===== -->
+    <section id="page-bills" class="page">
+      <div class="page-title">
+        <span class="icon">🧾</span>
+        <h2>Contas Mensais</h2>
+      </div>
+
+      <div class="card" style="text-align:center;margin-bottom:20px;">
+        <p class="text-sm text-secondary" style="line-height:1.6;">
+          Contas fixas recorrentes (Aluguel, Internet, etc).<br>
+          Diferente das dívidas, elas não acabam, então não entram na bola de neve.
+        </p>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <button class="btn btn-primary btn-full" onclick="openBillModal()">➕ Nova Conta Fixa</button>
+      </div>
+
+      <div id="bills-list"></div>
     </section>
 
     <!-- ===== SAVINGS PAGE ===== -->
@@ -221,6 +243,10 @@
     <button class="nav-item" data-page="routes">
       <span class="nav-icon">🛣️</span>
       <span class="nav-label">Rotas</span>
+    </button>
+    <button class="nav-item" data-page="bills">
+      <span class="nav-icon">🧾</span>
+      <span class="nav-label">Contas</span>
     </button>
     <button class="nav-item" data-page="debts">
       <span class="nav-icon">💣</span>
@@ -354,11 +380,57 @@
   </div>
 
   <!-- ========== CONFETTI CANVAS ========== -->
-  <canvas id="confetti-canvas"></canvas>
+    </div>
+  </div>
 
-</div>
+  <!-- Expense Modal -->
+  <div class="modal hidden" id="expense-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Adicionar Despesa</h3>
+        <button class="modal-close" onclick="closeExpenseModal()">✕</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Data</label>
+        <input type="date" class="form-input" id="expense-date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Descrição (Ex: Mercado, Gasolina)</label>
+        <input type="text" class="form-input" id="expense-name" placeholder="Ex: Atacadão">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Valor (R$)</label>
+        <input type="number" step="0.01" class="form-input" id="expense-amount" placeholder="0.00">
+      </div>
+      <button class="btn btn-primary btn-full" style="background:var(--warning);color:var(--bg-card);border:none;" onclick="saveExpense()">Registrar Despesa</button>
+    </div>
+  </div>
 
-<script src="app.js"></script>
+  <!-- Bill Modal -->
+  <div class="modal hidden" id="bill-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Nova Conta Fixa</h3>
+        <button class="modal-close" onclick="closeBillModal()">✕</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nome da Conta</label>
+        <input type="text" class="form-input" id="bill-name" placeholder="Ex: Aluguel, Internet">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Valor Mensal (R$)</label>
+        <input type="number" step="0.01" class="form-input" id="bill-amount" placeholder="0.00">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Dia do Vencimento</label>
+        <input type="number" class="form-input" id="bill-due-day" placeholder="Ex: 10" min="1" max="31">
+      </div>
+      <button class="btn btn-primary btn-full" onclick="saveBill()">Salvar Conta</button>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+  <script src="app.js"></script>
 <script src="ai-assistant.js"></script>
 </body>
 </html>
