@@ -89,7 +89,8 @@
 CONTEXTO FINANCEIRO ATUALIZADO DO GABRIEL:
 
 == RESUMO DA SEMANA ATUAL ==
-- Meta semanal: ${fm(fin.WEEKLY_TARGET)}
+- Meta semanal dinâmica (Base + Vencimentos dos próximos 14 dias): ${fm(totals.dynamicTarget)}
+- Meta base de vida definida pelo usuário: ${fm(data.weeks[weekKey]?.survivalTarget || 500)}
 - Ganhos Shopee: ${fm(totals.shopee)} (${totals.routeCount} rotas)
 - Ganhos Extras (Uber/99/Geladinho): ${fm(totals.extras)}
 - Total de ganhos na semana: ${fm(totals.totalIncome)}
