@@ -53,9 +53,9 @@ function getAppData() {
   const raw = localStorage.getItem('gab_finance_data');
   if (raw) {
     const data = JSON.parse(raw);
-    // Migrate: add dueDay to existing debts if missing
     data.debts.forEach(d => {
       if (d.dueDay === undefined) d.dueDay = null;
+      if (d.lastPaidMonth === undefined) d.lastPaidMonth = null;
     });
     return data;
   }
@@ -244,6 +244,10 @@ function getUpcomingDebts() {
   appData.debts.forEach(d => {
     const remaining = d.totalPayments - d.paidPayments;
     if (remaining <= 0 || !d.dueDay) return;
+
+    // Se já pagou neste mês, não mostra como próximo vencimento
+    const currentMonthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    if (d.lastPaidMonth === currentMonthKey) return;
 
     // Check if the due day falls within this week
     for (let dayObj of days) {
@@ -715,14 +719,20 @@ function renderDebts() {
     if (!isComplete) {
       if (debt.dueDay) {
         const today = new Date();
-        const dueThisMonth = new Date(today.getFullYear(), today.getMonth(), debt.dueDay);
-        const daysUntil = Math.ceil((dueThisMonth - today) / (1000 * 60 * 60 * 24));
-        let dueStatus = '';
-        if (daysUntil < 0) dueStatus = `<span class="text-danger">Venceu dia ${debt.dueDay}</span>`;
-        else if (daysUntil === 0) dueStatus = `<span class="text-warning">⚠️ Vence HOJE</span>`;
-        else if (daysUntil <= 7) dueStatus = `<span class="text-warning">Vence em ${daysUntil} dia${daysUntil > 1 ? 's' : ''} (dia ${debt.dueDay})</span>`;
-        else dueStatus = `<span class="text-secondary">Vence dia ${debt.dueDay}</span>`;
-        dueDayHtml = dueStatus;
+        const currentMonthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+        
+        if (debt.lastPaidMonth === currentMonthKey) {
+          dueDayHtml = `<span class="text-success">✅ Paga este mês (Vence dia ${debt.dueDay})</span>`;
+        } else {
+          const dueThisMonth = new Date(today.getFullYear(), today.getMonth(), debt.dueDay);
+          const daysUntil = Math.ceil((dueThisMonth - today) / (1000 * 60 * 60 * 24));
+          let dueStatus = '';
+          if (daysUntil < 0) dueStatus = `<span class="text-danger">Venceu dia ${debt.dueDay}</span>`;
+          else if (daysUntil === 0) dueStatus = `<span class="text-warning">⚠️ Vence HOJE</span>`;
+          else if (daysUntil <= 7) dueStatus = `<span class="text-warning">Vence em ${daysUntil} dia${daysUntil > 1 ? 's' : ''} (dia ${debt.dueDay})</span>`;
+          else dueStatus = `<span class="text-secondary">Vence dia ${debt.dueDay}</span>`;
+          dueDayHtml = dueStatus;
+        }
       } else {
         dueDayHtml = `<span class="text-muted">Sem vencimento definido</span>`;
       }
@@ -776,7 +786,8 @@ function renderDebts() {
 function payDebt(debtId) {
   const debt = appData.debts.find(d => d.id === debtId);
   if (!debt) return;
-
+  const today = new Date();
+  debt.lastPaidMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
   debt.paidPayments++;
   saveAppData(appData);
 
@@ -811,6 +822,18 @@ function setDueDay(debtId) {
       return;
     }
     debt.dueDay = day;
+    
+    // Pergunta se já foi pago se o dia já passou neste mês
+    const today = new Date();
+    const currentMonthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    if (day < today.getDate() && debt.lastPaidMonth !== currentMonthKey) {
+      if (confirm(`A parcela deste mês (dia ${day}) já foi paga?`)) {
+        debt.lastPaidMonth = currentMonthKey;
+      } else {
+        debt.lastPaidMonth = null;
+      }
+    }
+    
     showToast(`${debt.name}: vencimento definido para dia ${day}`, 'success');
   }
 
