@@ -758,12 +758,15 @@ function renderDebts() {
         <div class="debt-progress">
           <div class="fill" style="width: ${progress}%"></div>
         </div>
-        ${!isComplete ? `
-          <div class="debt-actions">
+        <div class="debt-actions" style="flex-wrap: wrap;">
+          ${!isComplete ? `
             <button class="debt-pay-btn" onclick="setDueDay('${debt.id}')" style="border-color:var(--text-muted);color:var(--text-muted);">📅 Vencimento</button>
             <button class="debt-pay-btn" onclick="payDebt('${debt.id}')">💰 Pagar Parcela</button>
-          </div>
-        ` : ''}
+          ` : ''}
+          ${debt.paidPayments > 0 ? `
+            <button class="debt-pay-btn" onclick="undoDebt('${debt.id}')" style="border-color:var(--danger);color:var(--danger);">↩️ Desfazer</button>
+          ` : ''}
+        </div>
       </div>
     `;
   });
@@ -801,6 +804,20 @@ function payDebt(debtId) {
 
   renderDebts();
   renderDashboard(); // Atualizar vencimentos no dashboard
+}
+
+function undoDebt(debtId) {
+  const debt = appData.debts.find(d => d.id === debtId);
+  if (!debt || debt.paidPayments <= 0) return;
+
+  if (confirm(`Tem certeza que deseja desfazer o último pagamento de "${debt.name}"?`)) {
+    debt.paidPayments--;
+    debt.lastPaidMonth = null;
+    saveAppData(appData);
+    renderDebts();
+    renderDashboard();
+    showToast(`Pagamento de ${debt.name} desfeito.`, 'warning');
+  }
 }
 
 function setDueDay(debtId) {
