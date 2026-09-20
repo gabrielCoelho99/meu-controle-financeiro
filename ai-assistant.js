@@ -61,6 +61,16 @@
       }
     });
 
+    let billLines = '';
+    let totalBillMonthly = 0;
+    if (data.bills) {
+      data.bills.forEach(b => {
+        const vencimento = b.dueDay ? ` (Vence dia ${b.dueDay})` : '';
+        billLines += `  - ${b.name}: ${fm(b.monthlyAmount)}${vencimento}\n`;
+        totalBillMonthly += b.monthlyAmount;
+      });
+    }
+
     const upcoming = fin.getUpcomingDebts();
     let upcomingText = '';
     if (upcoming.length > 0) {
@@ -84,7 +94,7 @@ CONTEXTO FINANCEIRO ATUALIZADO DO GABRIEL:
 - Ganhos Extras (Uber/99/Geladinho): ${fm(totals.extras)}
 - Total de ganhos na semana: ${fm(totals.totalIncome)}
 - Progresso da meta: ${Math.round(totals.progress)}%
-- Custo de sobrevivência semanal: ${fm(fin.SURVIVAL_TOTAL)} (Leite do filho R$200 + Combustível R$175 + Mercado R$150)
+- Despesas variáveis da semana: ${fm(totals.survivalCost)} (Supermercado, Gasolina, etc)
 - Cota semanal do aluguel: ${fm(fin.RENT_WEEKLY)}
 - Cota semanal de contas: ${fm(fin.BILLS_WEEKLY)}
 - Dinheiro livre após provisões: ${fm(totals.afterProvision)}
@@ -92,6 +102,10 @@ CONTEXTO FINANCEIRO ATUALIZADO DO GABRIEL:
 == CAIXINHAS DO MÊS ==
 - Aluguel guardado: ${fm(savings.rent)} de ${fm(fin.RENT_MONTHLY)}
 - Contas guardadas: ${fm(savings.bills)} de ${fm(fin.BILLS_MONTHLY)}
+
+== CONTAS FIXAS MENSAIS ==
+${billLines || 'Nenhuma conta cadastrada.'}
+- Total fixo mensal: ${fm(totalBillMonthly)}
 
 == DÍVIDAS ==
 ${debtLines}
