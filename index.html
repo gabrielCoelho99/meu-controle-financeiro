@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a0a1a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Meu Controle Financeiro</title>
+  <meta name="description" content="Controle financeiro semanal personalizado - Gerencie suas rotas Shopee, dívidas e caixinhas.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="app">
+  <!-- ========== HEADER ========== -->
+  <header class="app-header">
+    <div class="logo">
+      <div class="logo-icon">💰</div>
+      <div>
+        <div>Meu Controle</div>
+        <div class="header-week-label" id="header-week">—</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========== MAIN CONTENT ========== -->
+  <main>
+
+    <!-- ===== DASHBOARD PAGE ===== -->
+    <section id="page-dashboard" class="page active">
+
+      <!-- Week Navigator -->
+      <div class="week-nav">
+        <button id="btn-prev-week" title="Semana anterior">◀</button>
+        <div style="text-align:center;">
+          <div class="week-label" id="week-label">Semana Atual</div>
+          <div class="week-dates" id="week-dates">—</div>
+        </div>
+        <button id="btn-next-week" title="Próxima semana">▶</button>
+      </div>
+
+      <!-- Progress Ring -->
+      <div class="progress-ring-container">
+        <div class="progress-ring">
+          <svg viewBox="0 0 170 170">
+            <defs>
+              <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#8b5cf6"/>
+                <stop offset="100%" stop-color="#6366f1"/>
+              </linearGradient>
+            </defs>
+            <circle class="ring-bg" cx="85" cy="85" r="75"/>
+            <circle class="ring-fill" id="ring-fill" cx="85" cy="85" r="75" stroke-dasharray="471.24" stroke-dashoffset="471.24"/>
+          </svg>
+          <div class="ring-center">
+            <div class="ring-amount" id="ring-amount">R$ 0,00</div>
+            <div class="ring-label">de R$ 1.672,50</div>
+            <div class="ring-percent text-warning" id="ring-percent">0% da meta</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Health Indicator -->
+      <div class="health-indicator red" id="health-indicator">🔴 Nenhuma rota registrada</div>
+
+      <!-- Week Calendar Strip -->
+      <div class="week-strip" id="week-strip"></div>
+
+      <!-- Stats Grid -->
+      <div class="stats-grid">
+        <div class="stat-card highlight">
+          <div class="stat-icon">📦</div>
+          <div class="stat-value" id="stat-shopee">R$ 0,00</div>
+          <div class="stat-label">Shopee</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">💵</div>
+          <div class="stat-value" id="stat-extras">R$ 0,00</div>
+          <div class="stat-label">Extras</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🛒</div>
+          <div class="stat-value text-warning" id="stat-survival">R$ 525,00</div>
+          <div class="stat-label">Sobrevivência</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🎯</div>
+          <div class="stat-value text-success" id="stat-free">R$ 0,00</div>
+          <div class="stat-label">Livre p/ Dívidas</div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div style="display:flex;gap:10px;margin-bottom:16px;">
+        <button class="btn btn-primary btn-full btn-sm" id="btn-add-route">📦 Registrar Rota</button>
+        <button class="btn btn-outline btn-full btn-sm" id="btn-add-extra">💵 Renda Extra</button>
+      </div>
+
+    </section>
+
+    <!-- ===== ROUTES PAGE ===== -->
+    <section id="page-routes" class="page">
+      <div class="page-title">
+        <span class="icon">🛣️</span>
+        <h2>Rotas & Ganhos</h2>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-bottom:20px;">
+        <button class="btn btn-primary btn-full btn-sm" id="btn-add-route-2" onclick="document.getElementById('btn-add-route').click()">📦 Nova Rota</button>
+        <button class="btn btn-outline btn-full btn-sm" id="btn-add-extra-2" onclick="document.getElementById('btn-add-extra').click()">💵 Renda Extra</button>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Esta Semana</span>
+        </div>
+        <div class="income-list" id="routes-list">
+          <div class="empty-state">
+            <div class="empty-icon">🛣️</div>
+            <div class="empty-text">Nenhuma rota registrada nesta semana</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== DEBTS PAGE ===== -->
+    <section id="page-debts" class="page">
+      <div class="page-title">
+        <span class="icon">💣</span>
+        <h2>Bola de Neve</h2>
+      </div>
+
+      <!-- Debt Summary -->
+      <div class="debt-summary" id="debt-summary">
+        <div class="total-label">Total Restante</div>
+        <div class="total-amount text-danger" id="debt-total-amount">R$ 0,00</div>
+        <div class="total-detail" id="debt-total-detail">—</div>
+      </div>
+
+      <!-- Freed Money Banner -->
+      <div class="freed-banner" id="freed-banner" style="display:none;">
+        <div class="freed-icon">🔓</div>
+        <div>
+          <div class="freed-text">Dinheiro liberado com dívidas quitadas:</div>
+          <div class="freed-amount" id="freed-amount">R$ 0,00</div>
+        </div>
+      </div>
+
+      <!-- Debt List -->
+      <div id="debts-list"></div>
+    </section>
+
+    <!-- ===== SAVINGS PAGE ===== -->
+    <section id="page-savings" class="page">
+      <div class="page-title">
+        <span class="icon">🏦</span>
+        <h2>Caixinhas do Mês</h2>
+      </div>
+
+      <div class="card" style="text-align:center;margin-bottom:20px;">
+        <p class="text-sm text-secondary" style="line-height:1.6;">
+          Toda quinta-feira, separe as cotas abaixo.<br>
+          Quando o dia do vencimento chegar, o dinheiro estará pronto!
+        </p>
+      </div>
+
+      <div class="jars-grid">
+        <!-- Rent Jar -->
+        <div class="jar-card">
+          <div class="jar-visual">
+            <div class="jar-fill" id="rent-fill" style="height:0%"></div>
+          </div>
+          <div class="jar-title">🏡 Aluguel</div>
+          <div class="jar-amount" id="rent-amount">R$ 0,00</div>
+          <div class="jar-target" id="rent-target">Meta: R$ 1.468,00</div>
+          <button class="jar-deposit-btn" id="btn-deposit-rent">+ R$ 367/semana</button>
+        </div>
+
+        <!-- Bills Jar -->
+        <div class="jar-card">
+          <div class="jar-visual">
+            <div class="jar-fill" id="bills-fill" style="height:0%"></div>
+          </div>
+          <div class="jar-title">📱 Contas</div>
+          <div class="jar-amount" id="bills-amount">R$ 0,00</div>
+          <div class="jar-target" id="bills-target">Meta: R$ 135,00</div>
+          <button class="jar-deposit-btn" id="btn-deposit-bills">+ R$ 34/semana</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:20px;">
+        <div class="card-header">
+          <span class="card-title">Como Funciona</span>
+        </div>
+        <div style="font-size:0.85rem;color:var(--text-secondary);line-height:1.7;">
+          <p>📅 <strong>Toda quinta-feira</strong>, clique nos botões acima para registrar que você separou a cota.</p>
+          <p style="margin-top:8px;">🏡 <strong>Aluguel:</strong> R$ 367 × 4 semanas = R$ 1.468</p>
+          <p>📱 <strong>Contas:</strong> R$ 34 × 4 semanas = R$ 135 (internet + água)</p>
+          <p style="margin-top:8px;">💡 Guarde esse dinheiro numa <strong>caixinha separada</strong> (Nubank, Mercado Pago ou Poupança do Itaú). Não mexa nele!</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ========== BOTTOM NAVIGATION ========== -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" data-page="dashboard">
+      <span class="nav-icon">📊</span>
+      <span class="nav-label">Início</span>
+    </button>
+    <button class="nav-item" data-page="routes">
+      <span class="nav-icon">🛣️</span>
+      <span class="nav-label">Rotas</span>
+    </button>
+    <button class="nav-item" data-page="debts">
+      <span class="nav-icon">💣</span>
+      <span class="nav-label">Dívidas</span>
+    </button>
+    <button class="nav-item" data-page="savings">
+      <span class="nav-icon">🏦</span>
+      <span class="nav-label">Caixinhas</span>
+    </button>
+  </nav>
+
+  <!-- ========== CHAT WIDGET ========== -->
+  <button class="chat-fab has-alert" id="chat-fab" title="Assistente IA">🤖</button>
+
+  <div class="overlay hidden" id="chat-overlay"></div>
+
+  <div class="chat-panel hidden" id="chat-panel">
+    <div class="chat-header">
+      <div class="chat-header-info">
+        <div class="chat-avatar">🤖</div>
+        <div>
+          <div class="chat-name">Assistente Financeiro</div>
+          <div class="chat-status" id="ai-status">● Modo Offline</div>
+        </div>
+      </div>
+      <button class="chat-close" id="chat-close">✕</button>
+    </div>
+
+    <div class="chat-messages" id="chat-messages"></div>
+
+    <div class="chat-suggestions">
+      <button class="chat-suggestion" data-msg="Como estou?">📊 Como estou?</button>
+      <button class="chat-suggestion" data-msg="Quanto falta?">🎯 Quanto falta?</button>
+      <button class="chat-suggestion" data-msg="Minhas dívidas">💳 Dívidas</button>
+      <button class="chat-suggestion" data-msg="Aluguel">🏠 Aluguel</button>
+      <button class="chat-suggestion" data-msg="Motivação">💪 Motivação</button>
+    </div>
+
+    <div class="chat-input-area">
+      <input type="text" class="chat-input" id="chat-input" placeholder="Digite sua pergunta..." autocomplete="off">
+      <button class="chat-send" id="chat-send">➤</button>
+    </div>
+  </div>
+
+  <!-- ========== ROUTE MODAL ========== -->
+  <div class="overlay hidden" id="modal-overlay"></div>
+
+  <div class="modal hidden" id="route-modal">
+    <div class="modal-handle"></div>
+    <div class="modal-content">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div class="modal-title" style="margin-bottom:0;">📦 Registrar Rota Shopee</div>
+        <button class="chat-close" id="btn-close-route-modal" style="font-size:1.5rem;">✕</button>
+      </div>
+
+      <!-- Route Result Preview -->
+      <div class="route-result">
+        <div class="result-label">Valor Estimado da Rota</div>
+        <div class="result-amount" id="route-preview-amount">R$ 0,00</div>
+        <div id="weekend-bonus-info" class="text-sm text-success" style="display:none;margin-top:4px;"></div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="route-date">Data da Rota</label>
+        <input type="date" class="form-input" id="route-date">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="route-packages">Pacotes Entregues</label>
+          <input type="number" class="form-input" id="route-packages" placeholder="Ex: 95" min="0" max="200" inputmode="numeric">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="route-km">KM (R$)</label>
+          <input type="number" class="form-input" id="route-km" placeholder="Ex: 29" min="0" max="100" step="0.5" inputmode="decimal">
+        </div>
+      </div>
+
+      <div class="card" style="padding:12px 16px;">
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">🔴 Bônus de Risco</div>
+            <div class="toggle-sublabel">+R$ 45,00 (Zona de risco)</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="route-risk" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-full" id="btn-save-route" style="margin-top:20px;">
+        ✅ Salvar Rota
+      </button>
+    </div>
+  </div>
+
+  <!-- ========== EXTRA INCOME MODAL ========== -->
+  <div class="modal hidden" id="extra-modal">
+    <div class="modal-handle"></div>
+    <div class="modal-content">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div class="modal-title" style="margin-bottom:0;">💵 Registrar Renda Extra</div>
+        <button class="chat-close" id="btn-close-extra-modal" style="font-size:1.5rem;">✕</button>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="extra-date">Data</label>
+        <input type="date" class="form-input" id="extra-date">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="extra-category">Categoria</label>
+        <select class="form-select" id="extra-category">
+          <option value="uber">🚗 Uber</option>
+          <option value="99">🚙 99</option>
+          <option value="geladinho">🍦 Geladinho</option>
+          <option value="outros">💵 Outros</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="extra-amount">Valor (R$)</label>
+        <input type="number" class="form-input" id="extra-amount" placeholder="Ex: 150.00" min="0" step="0.01" inputmode="decimal">
+      </div>
+
+      <button class="btn btn-success btn-full" id="btn-save-extra" style="margin-top:12px;">
+        ✅ Salvar
+      </button>
+    </div>
+  </div>
+
+  <!-- ========== CONFETTI CANVAS ========== -->
+  <canvas id="confetti-canvas"></canvas>
+
+</div>
+
+<script src="app.js"></script>
+<script src="ai-assistant.js"></script>
+</body>
+</html>
